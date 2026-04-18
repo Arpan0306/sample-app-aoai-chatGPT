@@ -32,12 +32,12 @@ import {
   CosmosDBStatus,
   ErrorMessage,
   ExecResults,
-} from "../../api";
-import { Answer } from "../../components/Answer";
-import { QuestionInput } from "../../components/QuestionInput";
-import { ChatHistoryPanel } from "../../components/ChatHistory/ChatHistoryPanel";
-import { AppStateContext } from "../../state/AppProvider";
-import { useBoolean } from "@fluentui/react-hooks";
+} from '../../api'
+import { Answer } from '../../components/Answer'
+import { QuestionInput } from '../../components/QuestionInput'
+import { ChatHistoryPanel } from '../../components/ChatHistory/ChatHistoryPanel'
+import { AppStateContext } from '../../state/AppProvider'
+import { useBoolean } from '@fluentui/react-hooks'
 
 const enum messageStatus {
   NotRunning = 'Not Running',
@@ -142,7 +142,7 @@ const Chat = () => {
   }
 
   const processResultMessage = (resultMessage: ChatMessage, userMessage: ChatMessage, conversationId?: string) => {
-    if (typeof resultMessage.content === "string" && resultMessage.content.includes('all_exec_results')) {
+    if (typeof resultMessage.content === 'string' && resultMessage.content.includes('all_exec_results')) {
       const parsedExecResults = JSON.parse(resultMessage.content) as AzureSqlServerExecResults
       setExecResults(parsedExecResults.all_exec_results)
       assistantMessage.context = JSON.stringify({
@@ -179,13 +179,16 @@ const Chat = () => {
     }
   }
 
-  const makeApiRequestWithoutCosmosDB = async (question: ChatMessage["content"], conversationId?: string) => {
+  const makeApiRequestWithoutCosmosDB = async (question: ChatMessage['content'], conversationId?: string) => {
     setIsLoading(true)
     setShowLoadingMessage(true)
     const abortController = new AbortController()
     abortFuncs.current.unshift(abortController)
 
-    const questionContent = typeof question === 'string' ? question : [{ type: "text", text: question[0].text }, { type: "image_url", image_url: { url: question[1].image_url.url } }]
+    const questionContent =
+      typeof question === 'string'
+        ? question
+        : [{ type: 'text', text: question[0].text }, { type: 'image_url', image_url: { url: question[1].image_url.url } }]
     question = typeof question !== 'string' && question[0]?.text?.length > 0 ? question[0].text : question
 
     const userMessage: ChatMessage = {
@@ -228,13 +231,11 @@ const Chat = () => {
       const response = await conversationApi(request, abortController.signal)
       if (response?.body) {
         const reader = response.body.getReader()
-
         let runningText = ''
         while (true) {
           setProcessMessages(messageStatus.Processing)
           const { done, value } = await reader.read()
           if (done) break
-
           var text = new TextDecoder('utf-8').decode(value)
           const objects = text.split('\n')
           objects.forEach(obj => {
@@ -281,9 +282,7 @@ const Chat = () => {
         } else if (typeof result.error === 'string') {
           errorMessage = result.error
         }
-
         errorMessage = parseErrorMessage(errorMessage)
-
         let errorChatMsg: ChatMessage = {
           id: uuid(),
           role: ERROR,
@@ -302,16 +301,18 @@ const Chat = () => {
       abortFuncs.current = abortFuncs.current.filter(a => a !== abortController)
       setProcessMessages(messageStatus.Done)
     }
-
     return abortController.abort()
   }
 
-  const makeApiRequestWithCosmosDB = async (question: ChatMessage["content"], conversationId?: string) => {
+  const makeApiRequestWithCosmosDB = async (question: ChatMessage['content'], conversationId?: string) => {
     setIsLoading(true)
     setShowLoadingMessage(true)
     const abortController = new AbortController()
     abortFuncs.current.unshift(abortController)
-    const questionContent = typeof question === 'string' ? question : [{ type: "text", text: question[0].text }, { type: "image_url", image_url: { url: question[1].image_url.url } }]
+    const questionContent =
+      typeof question === 'string'
+        ? question
+        : [{ type: 'text', text: question[0].text }, { type: 'image_url', image_url: { url: question[1].image_url.url } }]
     question = typeof question !== 'string' && question[0]?.text?.length > 0 ? question[0].text : question
 
     const userMessage: ChatMessage = {
@@ -383,13 +384,11 @@ const Chat = () => {
       }
       if (response?.body) {
         const reader = response.body.getReader()
-
         let runningText = ''
         while (true) {
           setProcessMessages(messageStatus.Processing)
           const { done, value } = await reader.read()
           if (done) break
-
           var text = new TextDecoder('utf-8').decode(value)
           const objects = text.split('\n')
           objects.forEach(obj => {
@@ -471,9 +470,7 @@ const Chat = () => {
         } else if (typeof result.error === 'string') {
           errorMessage = result.error
         }
-
         errorMessage = parseErrorMessage(errorMessage)
-
         let errorChatMsg: ChatMessage = {
           id: uuid(),
           role: ERROR,
@@ -561,26 +558,21 @@ const Chat = () => {
 
   const tryGetRaiPrettyError = (errorMessage: string) => {
     try {
-      // Using a regex to extract the JSON part that contains "innererror"
       const match = errorMessage.match(/'innererror': ({.*})\}\}/)
       if (match) {
-        // Replacing single quotes with double quotes and converting Python-like booleans to JSON booleans
         const fixedJson = match[1]
           .replace(/'/g, '"')
           .replace(/\bTrue\b/g, 'true')
           .replace(/\bFalse\b/g, 'false')
         const innerErrorJson = JSON.parse(fixedJson)
         let reason = ''
-        // Check if jailbreak content filter is the reason of the error
         const jailbreak = innerErrorJson.content_filter_result.jailbreak
         if (jailbreak.filtered === true) {
           reason = 'Jailbreak'
         }
-
-        // Returning the prettified error message
         if (reason !== '') {
           return (
-            'The prompt was filtered due to triggering Azure OpenAI’s content filtering system.\n' +
+            'The prompt was filtered due to triggering Azure OpenAI\'s content filtering system.\n' +
             'Reason: This prompt contains content flagged as ' +
             reason +
             '\n\n' +
@@ -610,7 +602,6 @@ const Chat = () => {
         console.error('Error parsing inner error message: ', e)
       }
     }
-
     return tryGetRaiPrettyError(errorMessage)
   }
 
@@ -651,7 +642,6 @@ const Chat = () => {
           return
         }
         const noContentError = appStateContext.state.currentChat.messages.find(m => m.role === ERROR)
-
         if (!noContentError) {
           saveToDB(appStateContext.state.currentChat.messages, appStateContext.state.currentChat.id)
             .then(res => {
@@ -685,7 +675,6 @@ const Chat = () => {
               return errRes
             })
         }
-      } else {
       }
       appStateContext?.dispatch({ type: 'UPDATE_CHAT_HISTORY', payload: appStateContext.state.currentChat })
       setMessages(appStateContext.state.currentChat.messages)
@@ -717,7 +706,7 @@ const Chat = () => {
   }
 
   const parseCitationFromMessage = (message: ChatMessage) => {
-    if (message?.role && message?.role === 'tool' && typeof message?.content === "string") {
+    if (message?.role && message?.role === 'tool' && typeof message?.content === 'string') {
       try {
         const toolMessage = JSON.parse(message.content) as ToolMessageContent
         return toolMessage.citations
@@ -729,23 +718,17 @@ const Chat = () => {
   }
 
   const parsePlotFromMessage = (message: ChatMessage) => {
-    if (message?.role && message?.role === "tool" && typeof message?.content === "string") {
+    if (message?.role && message?.role === 'tool' && typeof message?.content === 'string') {
       try {
-        const execResults = JSON.parse(message.content) as AzureSqlServerExecResults;
-        const codeExecResult = execResults.all_exec_results.at(-1)?.code_exec_result;
-
-        if (codeExecResult === undefined) {
-          return null;
-        }
-        return codeExecResult.toString();
+        const execResults = JSON.parse(message.content) as AzureSqlServerExecResults
+        const codeExecResult = execResults.all_exec_results.at(-1)?.code_exec_result
+        if (codeExecResult === undefined) return null
+        return codeExecResult.toString()
+      } catch {
+        return null
       }
-      catch {
-        return null;
-      }
-      // const execResults = JSON.parse(message.content) as AzureSqlServerExecResults;
-      // return execResults.all_exec_results.at(-1)?.code_exec_result;
     }
-    return null;
+    return null
   }
 
   const disabledButton = () => {
@@ -768,19 +751,13 @@ const Chat = () => {
           <h1 className={styles.chatEmptyStateTitle}>Authentication Not Configured</h1>
           <h2 className={styles.chatEmptyStateSubtitle}>
             This app does not have authentication configured. Please add an identity provider by finding your app in the{' '}
-            <a href="https://portal.azure.com/" target="_blank">
-              Azure Portal
-            </a>
-            and following{' '}
-            <a
-              href="https://learn.microsoft.com/en-us/azure/app-service/scenario-secure-app-authentication-app-service#3-configure-authentication-and-authorization"
-              target="_blank">
+            <a href="https://portal.azure.com/" target="_blank">Azure Portal</a> and following{' '}
+            <a href="https://learn.microsoft.com/en-us/azure/app-service/scenario-secure-app-authentication-app-service#3-configure-authentication-and-authorization" target="_blank">
               these instructions
-            </a>
-            .
+            </a>.
           </h2>
           <h2 className={styles.chatEmptyStateSubtitle} style={{ fontSize: '20px' }}>
-            <strong>Authentication configuration takes a few minutes to apply. </strong>
+            <strong>Authentication configuration takes a few minutes to apply.</strong>
           </h2>
           <h2 className={styles.chatEmptyStateSubtitle} style={{ fontSize: '20px' }}>
             <strong>If you deployed in the last 10 minutes, please wait and reload the page after 10 minutes.</strong>
@@ -788,6 +765,37 @@ const Chat = () => {
         </Stack>
       ) : (
         <Stack horizontal className={styles.chatRoot}>
+
+          {/* ── IMPROVEMENT 1: Branded Sidebar ── */}
+          <div className={styles.sidebar}>
+            <div className={styles.sidebarHeader}>
+              <div className={styles.sidebarLogoRow}>
+                <div className={styles.sidebarLogo}>
+                  <img src={logo} alt="Empower Genie" className={styles.sidebarLogoImg} />
+                </div>
+                <span className={styles.sidebarAppName}>Empower Genie</span>
+              </div>
+              <button
+                className={styles.newChatSidebarBtn}
+                onClick={newChat}
+                disabled={disabledButton()}
+                aria-label="Start a new chat">
+                <span className={styles.newChatPlus}>+</span> New chat
+              </button>
+            </div>
+            <div className={styles.sidebarHistoryLabel}>Recent conversations</div>
+            {appStateContext?.state.chatHistory?.slice(0, 8).map(conv => (
+              <div
+                key={conv.id}
+                className={`${styles.sidebarHistoryItem} ${appStateContext?.state.currentChat?.id === conv.id ? styles.sidebarHistoryItemActive : ''}`}
+                onClick={() => appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: conv })}
+                title={conv.title}>
+                {conv.title}
+              </div>
+            ))}
+          </div>
+
+          {/* ── Main chat area ── */}
           <div className={styles.chatContainer}>
             {!messages || messages.length < 1 ? (
               <Stack className={styles.chatEmptyState}>
@@ -802,23 +810,35 @@ const Chat = () => {
                     {answer.role === 'user' ? (
                       <div className={styles.chatMessageUser} tabIndex={0}>
                         <div className={styles.chatMessageUserMessage}>
-                          {typeof answer.content === "string" && answer.content ? answer.content : Array.isArray(answer.content) ? <>{answer.content[0].text} <img className={styles.uploadedImageChat} src={answer.content[1].image_url.url} alt="Uploaded Preview" /></> : null}
+                          {typeof answer.content === 'string' && answer.content
+                            ? answer.content
+                            : Array.isArray(answer.content)
+                            ? <>{answer.content[0].text} <img className={styles.uploadedImageChat} src={answer.content[1].image_url.url} alt="Uploaded Preview" /></>
+                            : null}
                         </div>
                       </div>
                     ) : answer.role === 'assistant' ? (
+                      // ── IMPROVEMENT 2: Bot avatar beside assistant messages ──
                       <div className={styles.chatMessageGpt}>
-                        {typeof answer.content === "string" && <Answer
-                          answer={{
-                            answer: answer.content,
-                            citations: parseCitationFromMessage(messages[index - 1]),
-                            generated_chart: parsePlotFromMessage(messages[index - 1]),
-                            message_id: answer.id,
-                            feedback: answer.feedback,
-                            exec_results: execResults
-                          }}
-                          onCitationClicked={c => onShowCitation(c)}
-                          onExectResultClicked={() => onShowExecResult(answerId)}
-                        />}
+                        <div className={styles.botAvatarWrapper}>
+                          <div className={styles.botAvatar}>EG</div>
+                        </div>
+                        <div className={styles.botMessageContent}>
+                          {typeof answer.content === 'string' && (
+                            <Answer
+                              answer={{
+                                answer: answer.content,
+                                citations: parseCitationFromMessage(messages[index - 1]),
+                                generated_chart: parsePlotFromMessage(messages[index - 1]),
+                                message_id: answer.id,
+                                feedback: answer.feedback,
+                                exec_results: execResults
+                              }}
+                              onCitationClicked={c => onShowCitation(c)}
+                              onExectResultClicked={() => onShowExecResult(answerId)}
+                            />
+                          )}
+                        </div>
                       </div>
                     ) : answer.role === ERROR ? (
                       <div className={styles.chatMessageError}>
@@ -826,30 +846,30 @@ const Chat = () => {
                           <ErrorCircleRegular className={styles.errorIcon} style={{ color: 'rgba(182, 52, 67, 1)' }} />
                           <span>Error</span>
                         </Stack>
-                        <span className={styles.chatMessageErrorContent}>{typeof answer.content === "string" && answer.content}</span>
+                        <span className={styles.chatMessageErrorContent}>{typeof answer.content === 'string' && answer.content}</span>
                       </div>
                     ) : null}
                   </>
                 ))}
                 {showLoadingMessage && (
-                  <>
-                    <div className={styles.chatMessageGpt}>
+                  <div className={styles.chatMessageGpt}>
+                    <div className={styles.botAvatarWrapper}>
+                      <div className={styles.botAvatar}>EG</div>
+                    </div>
+                    <div className={styles.botMessageContent}>
                       <Answer
-                        answer={{
-                          answer: "Generating answer...",
-                          citations: [],
-                          generated_chart: null
-                        }}
+                        answer={{ answer: 'Generating answer...', citations: [], generated_chart: null }}
                         onCitationClicked={() => null}
                         onExectResultClicked={() => null}
                       />
                     </div>
-                  </>
+                  </div>
                 )}
                 <div ref={chatMessageStreamEnd} />
               </div>
             )}
 
+            {/* ── IMPROVEMENT 3: Improved input bar ── */}
             <Stack horizontal className={styles.chatInput}>
               {isLoading && messages.length > 0 && (
                 <Stack
@@ -861,92 +881,57 @@ const Chat = () => {
                   onClick={stopGenerating}
                   onKeyDown={e => (e.key === 'Enter' || e.key === ' ' ? stopGenerating() : null)}>
                   <SquareRegular className={styles.stopGeneratingIcon} aria-hidden="true" />
-                  <span className={styles.stopGeneratingText} aria-hidden="true">
-                    Stop generating
-                  </span>
+                  <span className={styles.stopGeneratingText} aria-hidden="true">Stop generating</span>
                 </Stack>
               )}
-              <Stack>
-                {appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured && (
-                  <CommandBarButton
-                    role="button"
-                    styles={{
-                      icon: {
-                        color: '#FFFFFF'
-                      },
-                      iconDisabled: {
-                        color: '#BDBDBD !important'
-                      },
-                      root: {
-                        color: '#FFFFFF',
-                        background:
-                          'radial-gradient(109.81% 107.82% at 100.1% 90.19%, #0F6CBD 33.63%, #2D87C3 70.31%, #8DDDD8 100%)'
-                      },
-                      rootDisabled: {
-                        background: '#F0F0F0'
-                      }
-                    }}
-                    className={styles.newChatIcon}
-                    iconProps={{ iconName: 'Add' }}
-                    onClick={newChat}
+              <div className={styles.inputBarRow}>
+                <div className={styles.inputBarActions}>
+                  {appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured && (
+                    <button
+                      className={styles.iconActionBtn}
+                      onClick={newChat}
+                      disabled={disabledButton()}
+                      aria-label="Start a new chat"
+                      title="New chat">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  )}
+                  <button
+                    className={styles.iconActionBtn}
+                    onClick={appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured ? clearChat : newChat}
                     disabled={disabledButton()}
-                    aria-label="start a new chat button"
-                  />
-                )}
-                <CommandBarButton
-                  role="button"
-                  styles={{
-                    icon: {
-                      color: '#FFFFFF'
-                    },
-                    iconDisabled: {
-                      color: '#BDBDBD !important'
-                    },
-                    root: {
-                      color: '#FFFFFF',
-                      background:
-                        'radial-gradient(109.81% 107.82% at 100.1% 90.19%, #0F6CBD 33.63%, #2D87C3 70.31%, #8DDDD8 100%)'
-                    },
-                    rootDisabled: {
-                      background: '#F0F0F0'
-                    }
+                    aria-label="Clear chat"
+                    title="Clear chat">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M3 4h10l-1 9H4L3 4z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                      <path d="M1 4h14M6 4V2h4v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </div>
+                <QuestionInput
+                  clearOnSend
+                  placeholder="Ask Empower Genie anything..."
+                  disabled={isLoading}
+                  onSend={(question, id) => {
+                    appStateContext?.state.isCosmosDBAvailable?.cosmosDB
+                      ? makeApiRequestWithCosmosDB(question, id)
+                      : makeApiRequestWithoutCosmosDB(question, id)
                   }}
-                  className={
-                    appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured
-                      ? styles.clearChatBroom
-                      : styles.clearChatBroomNoCosmos
-                  }
-                  iconProps={{ iconName: 'Broom' }}
-                  onClick={
-                    appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured
-                      ? clearChat
-                      : newChat
-                  }
-                  disabled={disabledButton()}
-                  aria-label="clear chat button"
+                  conversationId={appStateContext?.state.currentChat?.id ?? undefined}
                 />
-                <Dialog
-                  hidden={hideErrorDialog}
-                  onDismiss={handleErrorDialogClose}
-                  dialogContentProps={errorDialogContentProps}
-                  modalProps={modalProps}></Dialog>
-              </Stack>
-              <QuestionInput
-                clearOnSend
-                placeholder="Type a new question..."
-                disabled={isLoading}
-                onSend={(question, id) => {
-                  appStateContext?.state.isCosmosDBAvailable?.cosmosDB
-                    ? makeApiRequestWithCosmosDB(question, id)
-                    : makeApiRequestWithoutCosmosDB(question, id)
-                }}
-                conversationId={
-                  appStateContext?.state.currentChat?.id ? appStateContext?.state.currentChat?.id : undefined
-                }
+              </div>
+              <Dialog
+                hidden={hideErrorDialog}
+                onDismiss={handleErrorDialogClose}
+                dialogContentProps={errorDialogContentProps}
+                modalProps={modalProps}
               />
             </Stack>
           </div>
-          {/* Citation Panel */}
+
+          {/* ── IMPROVEMENT 4: Citation panel with cleaner chips ── */}
           {messages && messages.length > 0 && isCitationPanelOpen && activeCitation && (
             <Stack.Item className={styles.citationPanel} tabIndex={0} role="tabpanel" aria-label="Citations Panel">
               <Stack
@@ -955,26 +940,31 @@ const Chat = () => {
                 className={styles.citationPanelHeaderContainer}
                 horizontalAlign="space-between"
                 verticalAlign="center">
-                <span aria-label="Citations" className={styles.citationPanelHeader}>
-                  Citations
-                </span>
+                <span aria-label="Citations" className={styles.citationPanelHeader}>Citations</span>
                 <IconButton
                   iconProps={{ iconName: 'Cancel' }}
                   aria-label="Close citations panel"
                   onClick={() => setIsCitationPanelOpen(false)}
                 />
               </Stack>
-              <h5
-                className={styles.citationPanelTitle}
+              {/* Cleaner citation chip */}
+              <div className={styles.citationChip}
+                title={activeCitation.url && !activeCitation.url.includes('blob.core') ? activeCitation.url : activeCitation.title ?? ''}
+                onClick={() => onViewSource(activeCitation)}
                 tabIndex={0}
-                title={
-                  activeCitation.url && !activeCitation.url.includes('blob.core')
-                    ? activeCitation.url
-                    : activeCitation.title ?? ''
-                }
-                onClick={() => onViewSource(activeCitation)}>
-                {activeCitation.title}
-              </h5>
+                role="button"
+                aria-label={`View source: ${activeCitation.title}`}>
+                <svg className={styles.citationChipIcon} width="12" height="12" viewBox="0 0 14 14" fill="none">
+                  <rect x="1" y="1" width="12" height="12" rx="2.5" stroke="currentColor" strokeWidth="1.3" />
+                  <path d="M4 5h6M4 7.5h6M4 10h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                </svg>
+                <span className={styles.citationChipTitle}>{activeCitation.title}</span>
+                {activeCitation.url && !activeCitation.url.includes('blob.core') && (
+                  <svg className={styles.citationChipExternal} width="10" height="10" viewBox="0 0 12 12" fill="none">
+                    <path d="M5 2H2v8h8V7M7 2h3v3M10 2L6 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </div>
               <div tabIndex={0}>
                 <ReactMarkdown
                   linkTarget="_blank"
@@ -986,6 +976,7 @@ const Chat = () => {
               </div>
             </Stack.Item>
           )}
+
           {messages && messages.length > 0 && isIntentsPanelOpen && (
             <Stack.Item className={styles.citationPanel} tabIndex={0} role="tabpanel" aria-label="Intents Panel">
               <Stack
@@ -994,9 +985,7 @@ const Chat = () => {
                 className={styles.citationPanelHeaderContainer}
                 horizontalAlign="space-between"
                 verticalAlign="center">
-                <span aria-label="Intents" className={styles.citationPanelHeader}>
-                  Intents
-                </span>
+                <span aria-label="Intents" className={styles.citationPanelHeader}>Intents</span>
                 <IconButton
                   iconProps={{ iconName: 'Cancel' }}
                   aria-label="Close intents panel"
@@ -1007,33 +996,31 @@ const Chat = () => {
                 {appStateContext?.state?.answerExecResult[answerId]?.map((execResult: ExecResults, index) => (
                   <Stack className={styles.exectResultList} verticalAlign="space-between">
                     <><span>Intent:</span> <p>{execResult.intent}</p></>
-                    {execResult.search_query && <><span>Search Query:</span>
-                      <SyntaxHighlighter
-                        style={nord}
-                        wrapLines={true}
-                        lineProps={{ style: { wordBreak: 'break-all', whiteSpace: 'pre-wrap' } }}
-                        language="sql"
-                        PreTag="p">
-                        {execResult.search_query}
-                      </SyntaxHighlighter></>}
+                    {execResult.search_query && (
+                      <><span>Search Query:</span>
+                        <SyntaxHighlighter style={nord} wrapLines={true} lineProps={{ style: { wordBreak: 'break-all', whiteSpace: 'pre-wrap' } }} language="sql" PreTag="p">
+                          {execResult.search_query}
+                        </SyntaxHighlighter>
+                      </>
+                    )}
                     {execResult.search_result && <><span>Search Result:</span> <p>{execResult.search_result}</p></>}
-                    {execResult.code_generated && <><span>Code Generated:</span>
-                      <SyntaxHighlighter
-                        style={nord}
-                        wrapLines={true}
-                        lineProps={{ style: { wordBreak: 'break-all', whiteSpace: 'pre-wrap' } }}
-                        language="python"
-                        PreTag="p">
-                        {execResult.code_generated}
-                      </SyntaxHighlighter>
-                    </>}
+                    {execResult.code_generated && (
+                      <><span>Code Generated:</span>
+                        <SyntaxHighlighter style={nord} wrapLines={true} lineProps={{ style: { wordBreak: 'break-all', whiteSpace: 'pre-wrap' } }} language="python" PreTag="p">
+                          {execResult.code_generated}
+                        </SyntaxHighlighter>
+                      </>
+                    )}
                   </Stack>
                 ))}
               </Stack>
             </Stack.Item>
           )}
+
           {appStateContext?.state.isChatHistoryOpen &&
-            appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured && <ChatHistoryPanel />}
+            appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured && (
+              <ChatHistoryPanel />
+            )}
         </Stack>
       )}
     </div>
